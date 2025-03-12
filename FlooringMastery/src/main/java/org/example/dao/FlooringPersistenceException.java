@@ -1,4 +1,4 @@
-package org.example.service;
+package org.example.dao;
 
 public class FlooringPersistenceException extends RuntimeException {
     public FlooringPersistenceException(String message) {

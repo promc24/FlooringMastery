@@ -1,7 +1,6 @@
 package org.example.dao;
 
 import org.example.model.Order;
-import org.example.service.FlooringPersistenceException;
 
 import java.io.*;
 import java.math.BigDecimal;
@@ -59,10 +58,19 @@ public class FlooringDaoImpl implements FlooringDao{
 
     @Override
     public void updateOrder(Order order, LocalDate orderDate) throws FlooringPersistenceException {
-        String fileName = ORDERS_DIRECTORY + "Orders_" + orderDate.format(DateTimeFormatter.ofPattern("MMddyyyy")) + ".txt";
-        List<Order> ordersList = getAllOrders(orderDate);
+        //loads the orders into hashmap
+        loadOrders(orderDate);
+        //gets the list of orders for the date
+
+        List<Order> ordersList = orders.get(orderDate);
+        //checks is list is empty and if so sends error message
+        if(ordersList == null || ordersList.isEmpty()){
+            System.out.println("No orders for this date:" + orderDate);
+            return;
+        }
 
         boolean orderFound = false;
+        //checks is order is in the list and
         for (int i = 0; i < ordersList.size(); i++) {
             if (ordersList.get(i).getOrderNumber() == order.getOrderNumber()) {
                 ordersList.set(i, order);
@@ -70,14 +78,19 @@ public class FlooringDaoImpl implements FlooringDao{
                 break;
             }
         }
-
+        //if order is found sorts them and rewrites to file
         if (orderFound) {
+            orders.put(orderDate, ordersList);
+            ordersList.sort(Comparator.comparingInt(Order::getOrderNumber));
+            String fileName = ORDERS_DIRECTORY + "Orders_" + orderDate.format(DateTimeFormatter.ofPattern("MMddyyyy")) + ".txt";
             rewriteOrdersToFile(fileName, ordersList, false);
 
+        } else {
+            System.out.println("No such order found");
         }
     }
 
-
+    //finds order to be edited using order date and number
     @Override
     public Order editOrder(LocalDate orderDate, int orderNumber) throws FlooringPersistenceException {
         List<Order> ordersList = getAllOrders(orderDate);
@@ -98,6 +111,7 @@ public class FlooringDaoImpl implements FlooringDao{
 
     }
 
+    //removes order from file
     @Override
     public Order removeOrder(LocalDate orderDate, int orderNumber) throws FlooringPersistenceException {
         String fileName = ORDERS_DIRECTORY + "Orders_" + orderDate.format(DateTimeFormatter.ofPattern("MMddyyyy")) + ".txt";
@@ -130,6 +144,31 @@ public class FlooringDaoImpl implements FlooringDao{
         if (orderToRemove != null) {
             //rewrites the updated list to the file
             rewriteOrdersToFile(fileName, ordersList, false);
+            try{
+                try {
+                    BufferedReader reader = new BufferedReader(new FileReader(fileName));
+                    //skips first line (header)
+                    String header = reader.readLine();
+                    String line = reader.readLine();
+                    if(!header.isEmpty() && line == null){
+                        File file = new File(fileName);
+                        if (file.delete()) {
+                            System.out.println("Deleted empty file: " + fileName);
+                        } else {
+                            System.out.println("Failed to delete empty file: " + fileName);
+                        }
+
+                    }
+                } catch (FileNotFoundException e) {
+                    System.out.println("Error reading file: " + e);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+
+            } catch (RuntimeException e) {
+                throw new RuntimeException(e);
+            }
+
 
         } else {
             System.out.println("Order not found for the given date and order number.");
@@ -137,7 +176,9 @@ public class FlooringDaoImpl implements FlooringDao{
         return orderToRemove;
 
     }
-        @Override
+
+    //extract all date from all files in ascending order number
+    @Override
     public List<Order> extractAllOrders() {
         List<Order> allOrders = new ArrayList<>();
         File ordersDirectory = new File(ORDERS_DIRECTORY);
@@ -179,22 +220,23 @@ public class FlooringDaoImpl implements FlooringDao{
         return allOrders;
     }
 
+    //rewrites file if it extracts all input it adds date as well
     private void rewriteOrdersToFile(String fileName, List<Order> ordersList, boolean isExportAll) {
         try {
             PrintWriter writer = new PrintWriter(new FileWriter(fileName));
             if (isExportAll) {
-                // Write the header
+                //writes the header
                 writer.println("OrderNumber,CustomerName,State,TaxRate,ProductType,Area,CostPerSquareFoot,LaborCostPerSquareFoot,MaterialCost,LaborCost,Tax,Total,OrderDate");
-                // Write each order to the file
+                //writes each order to the file
                 for (Order order : ordersList) {
                     writer.println(orderToText(order, true));
                     writer.flush();
                 }
                 writer.close();
             } else {
-                // Write the header
+                //writes the header
                 writer.println("OrderNumber,CustomerName,State,TaxRate,ProductType,Area,CostPerSquareFoot,LaborCostPerSquareFoot,MaterialCost,LaborCost,Tax,Total");
-                // Write each order to the file
+                //writes each order to the file
                 for (Order order : ordersList) {
                     writer.println(orderToText(order, false));
                     writer.flush();
@@ -208,6 +250,7 @@ public class FlooringDaoImpl implements FlooringDao{
         }
     }
 
+    //creates order from file
     private static Order getOrder(String line) {
         String[] parts = line.split(",");
         return new Order(
@@ -228,6 +271,37 @@ public class FlooringDaoImpl implements FlooringDao{
 
     public void clearOrders() {
         orders.clear();
+    }
+
+    //loads orders in file into hashmap
+    public void loadOrders(LocalDate orderDate) throws FlooringPersistenceException {
+        String fileName = ORDERS_DIRECTORY + "Orders_" + orderDate.format(DateTimeFormatter.ofPattern("MMddyyyy")) + ".txt";
+        File orderFile = new File(fileName);
+
+        if (!orderFile.exists()) {
+            orders.put(orderDate, new ArrayList<>());
+            return;
+        }
+
+        List<Order> ordersList = new ArrayList<>();
+
+        try {
+            Scanner scanner = new Scanner(new BufferedReader(new FileReader(orderFile)));
+            if (scanner.hasNextLine()) {
+                scanner.nextLine();
+            }
+
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine();
+                Order order = getOrder(line);
+                ordersList.add(order);
+            }
+
+            orders.put(orderDate, ordersList);
+
+        } catch (FileNotFoundException e) {
+            throw new FlooringPersistenceException("Could not load order file: " + fileName, e);
+        }
     }
 
     //loads and reads information from tax file
@@ -278,20 +352,22 @@ public class FlooringDaoImpl implements FlooringDao{
 
     //calculates values
     public ArrayList<BigDecimal> calculateOrderInfo(ArrayList<String> tempOrderInfoList){
+        //gets information from temp lost and state info from file
         String state = tempOrderInfoList.get(0);
         String productType = tempOrderInfoList.get(1);
         BigDecimal area = new BigDecimal(tempOrderInfoList.get(2));
         BigDecimal[] costAndLaborCostPerSquareFoot = loadProductInfo(productType);
         BigDecimal taxRate = loadTaxInfo(state);
 
+        //values calculations
         BigDecimal materialCost = area.multiply(costAndLaborCostPerSquareFoot[0]);
         BigDecimal laborCost = area.multiply(costAndLaborCostPerSquareFoot[1]);
         BigDecimal materialAndLaborTot = materialCost.add(laborCost);
-//
         BigDecimal taxRateHundred = taxRate.divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
         BigDecimal tax = materialAndLaborTot.multiply(taxRateHundred).setScale(2,RoundingMode.HALF_UP);
         BigDecimal total = materialCost.add(laborCost.add(tax)).setScale(2,RoundingMode.HALF_UP);
 
+        //adds calculated values to list
         calculatedInfoList.add(taxRate);
         calculatedInfoList.add(costAndLaborCostPerSquareFoot[0]);
         calculatedInfoList.add(costAndLaborCostPerSquareFoot[1]);
@@ -301,8 +377,6 @@ public class FlooringDaoImpl implements FlooringDao{
         calculatedInfoList.add(total);
 
         return calculatedInfoList;
-
-
     }
 
     //writes order into file
@@ -320,7 +394,7 @@ public class FlooringDaoImpl implements FlooringDao{
             if (isFileNew){
                 out.println("OrderNumber,CustomerName,State,TaxRate,ProductType,Area,CostPerSquareFoot,LaborCostPerSquareFoot,MaterialCost,LaborCost,Tax,Total");
             }
-            //write order to file immediately
+            //writes order to file immediately
             out.println(orderToText(orders, false));
             out.flush();
         } catch (IOException e) {
@@ -368,6 +442,7 @@ public class FlooringDaoImpl implements FlooringDao{
 
     }
 
+    //gets states information from Tax file
     public ArrayList<String> getStateInfo(){
         try {
             BufferedReader stateReader = new BufferedReader(new FileReader(TAX_FILE));

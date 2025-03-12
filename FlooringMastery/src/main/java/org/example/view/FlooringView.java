@@ -289,6 +289,7 @@ public class FlooringView {
             //displays inserted order info
             io.print("\n<<Edited Order Information>>\n");
             io.print("Order date: '" + ogDate + "'");
+            io.print("Order number: '" + ogOrder.getOrderNumber() + "'");
             io.print("Customer name: '" + newCustomerName + "'");
             io.print("Order state: '" + newState + "'");
             io.print("Order tax rate: '" + taxRate + "'");
@@ -317,6 +318,7 @@ public class FlooringView {
             if (saveOrder == 1) {
                 editedOrder = new Order(ogOrder.getOrderDate());
                 editedOrder.setOrderDate(ogOrder.getOrderDate());
+                editedOrder.setOrderNumber(ogOrder.getOrderNumber());
                 editedOrder.setCustomerName(newCustomerName);
                 editedOrder.setState(newState);
                 editedOrder.setTaxRate(taxRate);

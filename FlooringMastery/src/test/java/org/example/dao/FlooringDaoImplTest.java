@@ -1,7 +1,6 @@
 package org.example.dao;
 
 import org.example.model.Order;
-import org.example.service.FlooringPersistenceException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

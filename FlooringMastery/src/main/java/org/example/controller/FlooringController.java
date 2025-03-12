@@ -2,7 +2,7 @@ package org.example.controller;
 
 import org.example.service.FlooringDataValidationException;
 import org.example.service.FlooringDuplicateIdException;
-import org.example.service.FlooringPersistenceException;
+import org.example.dao.FlooringPersistenceException;
 import org.example.model.Order;
 import org.example.service.FlooringServiceLayer;
 import org.example.view.FlooringView;
