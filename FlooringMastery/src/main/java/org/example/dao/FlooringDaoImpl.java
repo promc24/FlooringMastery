@@ -17,12 +17,6 @@ public class FlooringDaoImpl implements FlooringDao{
 
     private final Map<LocalDate, List<Order>> orders = new HashMap<>();
 
-    ArrayList<BigDecimal> calculatedInfoList = new ArrayList<BigDecimal>();
-    ArrayList<String> statesInfile = new ArrayList<String>();
-    ArrayList<String> productsInFile = new ArrayList<String>();
-
-
-
     @Override
     public Order addOrder(LocalDate orderDate, Order order) throws FlooringPersistenceException {
         orders.putIfAbsent(orderDate, new ArrayList<>());
@@ -46,10 +40,9 @@ public class FlooringDaoImpl implements FlooringDao{
                 Order order = getOrder(line);
                 ordersList.add(order);
             }
-        } catch (FileNotFoundException e) {
-            System.out.println("Error reading file: " + e);
+            reader.close();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            return ordersList;
         }
         return ordersList;
 
@@ -58,17 +51,11 @@ public class FlooringDaoImpl implements FlooringDao{
 
     @Override
     public void updateOrder(Order order, LocalDate orderDate) throws FlooringPersistenceException {
+
         //loads the orders into hashmap
         loadOrders(orderDate);
         //gets the list of orders for the date
-
         List<Order> ordersList = orders.get(orderDate);
-        //checks is list is empty and if so sends error message
-        if(ordersList == null || ordersList.isEmpty()){
-            System.out.println("No orders for this date:" + orderDate);
-            return;
-        }
-
         boolean orderFound = false;
         //checks is order is in the list and
         for (int i = 0; i < ordersList.size(); i++) {
@@ -84,9 +71,6 @@ public class FlooringDaoImpl implements FlooringDao{
             ordersList.sort(Comparator.comparingInt(Order::getOrderNumber));
             String fileName = ORDERS_DIRECTORY + "Orders_" + orderDate.format(DateTimeFormatter.ofPattern("MMddyyyy")) + ".txt";
             rewriteOrdersToFile(fileName, ordersList, false);
-
-        } else {
-            System.out.println("No such order found");
         }
     }
 
@@ -102,22 +86,17 @@ public class FlooringDaoImpl implements FlooringDao{
                 break;
             }
         }
-
-        if (orderToEdit == null){
-            System.out.println("No such order found");
-        }
-
         return orderToEdit;
-
     }
 
-    //removes order from file
+    //removes order from file and deletes if no orders in file
     @Override
     public Order removeOrder(LocalDate orderDate, int orderNumber) throws FlooringPersistenceException {
         String fileName = ORDERS_DIRECTORY + "Orders_" + orderDate.format(DateTimeFormatter.ofPattern("MMddyyyy")) + ".txt";
         List<Order> ordersList = new ArrayList<>();
         Order orderToRemove = null;
         try {
+            //reads orders from file and adds them to list
             BufferedReader reader = new BufferedReader(new FileReader(fileName));
             //skips first line (header)
             reader.readLine();
@@ -127,12 +106,12 @@ public class FlooringDaoImpl implements FlooringDao{
                 order.setOrderDate(orderDate);
                 ordersList.add(order);
             }
-        } catch (FileNotFoundException e) {
-            System.out.println("Error reading file: " + e);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            reader.close();
+        } catch (FlooringPersistenceException | IOException e) {
+            throw new FlooringPersistenceException("Error reading file: " + e);
         }
 
+        //loops through list and removes order if found
         for(Order order : ordersList){
             if (order.getOrderDate() != null && order.getOrderDate().equals(orderDate) && order.getOrderNumber() == orderNumber) {
                 orderToRemove = order;
@@ -140,38 +119,27 @@ public class FlooringDaoImpl implements FlooringDao{
                 break;
             }
         }
-
         if (orderToRemove != null) {
             //rewrites the updated list to the file
             rewriteOrdersToFile(fileName, ordersList, false);
-            try{
-                try {
-                    BufferedReader reader = new BufferedReader(new FileReader(fileName));
-                    //skips first line (header)
-                    String header = reader.readLine();
-                    String line = reader.readLine();
-                    if(!header.isEmpty() && line == null){
-                        File file = new File(fileName);
-                        if (file.delete()) {
-                            System.out.println("Deleted empty file: " + fileName);
-                        } else {
-                            System.out.println("Failed to delete empty file: " + fileName);
-                        }
-
+            try {
+                BufferedReader reader = new BufferedReader(new FileReader(fileName));
+                String header = reader.readLine();
+                String line = reader.readLine();
+                reader.close();
+                //checks if header exists and if first line is null if so deletes file
+                if(!header.isEmpty() && line == null){
+                    File file = new File(fileName);
+                    if (file.delete()) {
+                        throw new FlooringPersistenceException("File " + fileName + " deleted as file is empty.");
+                    } else {
+                        throw new FlooringPersistenceException("Failed to delete " + fileName);
                     }
-                } catch (FileNotFoundException e) {
-                    System.out.println("Error reading file: " + e);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+
                 }
-
-            } catch (RuntimeException e) {
-                throw new RuntimeException(e);
+            } catch (FlooringPersistenceException | IOException e) {
+                throw new FlooringPersistenceException("Error reading file: " + e);
             }
-
-
-        } else {
-            System.out.println("Order not found for the given date and order number.");
         }
         return orderToRemove;
 
@@ -208,15 +176,15 @@ public class FlooringDaoImpl implements FlooringDao{
                         allOrders.add(order);
                     }
                 } catch (IOException e) {
-                    System.out.println("Error reading file: " + file.getName() + " - " + e.getMessage());
+                    throw new FlooringPersistenceException("Error reading file: " + file.getName() + " - " + e.getMessage());
                 }
             }
         }
 
         allOrders.sort(Comparator.comparingInt(Order::getOrderNumber));
 
-        String EXPORTED_FILES = "C:\\Users\\promo\\IdeaProjects\\java-practice-promc24\\flooring-mastery-project-promc24\\FlooringMastery\\src\\main\\java\\org\\example\\textfiles\\Backup\\DataExport.txt";
-        rewriteOrdersToFile(EXPORTED_FILES, allOrders, true);
+        String exportedFiles = "C:\\Users\\promo\\IdeaProjects\\java-practice-promc24\\flooring-mastery-project-promc24\\FlooringMastery\\src\\main\\java\\org\\example\\textfiles\\Backup\\DataExport.txt";
+        rewriteOrdersToFile(exportedFiles, allOrders, true);
         return allOrders;
     }
 
@@ -232,7 +200,6 @@ public class FlooringDaoImpl implements FlooringDao{
                     writer.println(orderToText(order, true));
                     writer.flush();
                 }
-                writer.close();
             } else {
                 //writes the header
                 writer.println("OrderNumber,CustomerName,State,TaxRate,ProductType,Area,CostPerSquareFoot,LaborCostPerSquareFoot,MaterialCost,LaborCost,Tax,Total");
@@ -241,12 +208,11 @@ public class FlooringDaoImpl implements FlooringDao{
                     writer.println(orderToText(order, false));
                     writer.flush();
                 }
-
-                writer.close();
             }
+            writer.close();
 
-        } catch (IOException e) {
-            System.out.println("Error writing to file: " + e.getMessage());
+        } catch (FlooringPersistenceException | IOException e) {
+            throw new FlooringPersistenceException("Error writing to file: " + e.getMessage());
         }
     }
 
@@ -298,85 +264,11 @@ public class FlooringDaoImpl implements FlooringDao{
             }
 
             orders.put(orderDate, ordersList);
+            scanner.close();
 
-        } catch (FileNotFoundException e) {
+        } catch (FlooringPersistenceException | FileNotFoundException e) {
             throw new FlooringPersistenceException("Could not load order file: " + fileName, e);
         }
-    }
-
-    //loads and reads information from tax file
-    private BigDecimal loadTaxInfo(String state) {
-        try {
-            BufferedReader reader = new BufferedReader(new FileReader(TAX_FILE));
-            //skips first line (header)
-            reader.readLine();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] taxInfo = line.split(",");
-                //checks if state matches
-                if (taxInfo[1].equalsIgnoreCase(state)) {
-                    //returns tax rate
-                    return new BigDecimal(taxInfo[2]);
-                }
-            }
-        } catch (FileNotFoundException e) {
-            System.out.println("Error reading tax file: " + e);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        return BigDecimal.ZERO;
-    }
-
-    //loads and reads information from product file
-    private BigDecimal[] loadProductInfo(String productType) {
-        try {
-            BufferedReader reader = new BufferedReader(new FileReader(PRODUCT_FILE));
-            //skips first line (header)
-            reader.readLine();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] productInfo = line.split(",");
-                //checks if product matches
-                if (productInfo[0].equalsIgnoreCase(productType)) {
-
-                    return new BigDecimal[]{new BigDecimal(productInfo[1]), new BigDecimal(productInfo[2])};
-                }
-            }
-        } catch (FileNotFoundException e) {
-            System.out.println("Error reading product file: " + e);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        return new BigDecimal[]{BigDecimal.ZERO};
-    }
-
-    //calculates values
-    public ArrayList<BigDecimal> calculateOrderInfo(ArrayList<String> tempOrderInfoList){
-        //gets information from temp lost and state info from file
-        String state = tempOrderInfoList.get(0);
-        String productType = tempOrderInfoList.get(1);
-        BigDecimal area = new BigDecimal(tempOrderInfoList.get(2));
-        BigDecimal[] costAndLaborCostPerSquareFoot = loadProductInfo(productType);
-        BigDecimal taxRate = loadTaxInfo(state);
-
-        //values calculations
-        BigDecimal materialCost = area.multiply(costAndLaborCostPerSquareFoot[0]);
-        BigDecimal laborCost = area.multiply(costAndLaborCostPerSquareFoot[1]);
-        BigDecimal materialAndLaborTot = materialCost.add(laborCost);
-        BigDecimal taxRateHundred = taxRate.divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-        BigDecimal tax = materialAndLaborTot.multiply(taxRateHundred).setScale(2,RoundingMode.HALF_UP);
-        BigDecimal total = materialCost.add(laborCost.add(tax)).setScale(2,RoundingMode.HALF_UP);
-
-        //adds calculated values to list
-        calculatedInfoList.add(taxRate);
-        calculatedInfoList.add(costAndLaborCostPerSquareFoot[0]);
-        calculatedInfoList.add(costAndLaborCostPerSquareFoot[1]);
-        calculatedInfoList.add(materialCost);
-        calculatedInfoList.add(laborCost);
-        calculatedInfoList.add(tax);
-        calculatedInfoList.add(total);
-
-        return calculatedInfoList;
     }
 
     //writes order into file
@@ -397,8 +289,9 @@ public class FlooringDaoImpl implements FlooringDao{
             //writes order to file immediately
             out.println(orderToText(orders, false));
             out.flush();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            out.close();
+        } catch (FlooringPersistenceException | IOException e) {
+            throw new FlooringPersistenceException("Error writing to file: " + e.getMessage());
         }
     }
 
@@ -437,32 +330,5 @@ public class FlooringDaoImpl implements FlooringDao{
                     order.getTotal();
 
         }
-
-
-
     }
-
-    //gets states information from Tax file
-    public ArrayList<String> getStateInfo(){
-        try {
-            BufferedReader stateReader = new BufferedReader(new FileReader(TAX_FILE));
-            //skips first line (header)
-            stateReader.readLine();
-            String line;
-            while ((line = stateReader.readLine()) != null) {
-                String[] productInfo = line.split(",");
-                statesInfile.add(productInfo[1]);
-
-            }
-        } catch (FileNotFoundException e) {
-            System.out.println("Error reading state file: " + e);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        return statesInfile;
-    }
-
-
-
 }

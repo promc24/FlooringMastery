@@ -1,7 +1,6 @@
 package org.example.controller;
 
 import org.example.service.FlooringDataValidationException;
-import org.example.service.FlooringDuplicateIdException;
 import org.example.dao.FlooringPersistenceException;
 import org.example.model.Order;
 import org.example.service.FlooringServiceLayer;
@@ -94,8 +93,9 @@ public class FlooringController {
         Order removedOrder = service.removeOrder(orderDate, orderNumber);
         if(removedOrder != null){
             view.displayRemoveSuccessBanner();
+        } else {
+            view.displayNoOrderFoundBanner(orderDate,orderNumber);
         }
-
     }
 
     //exports all data
@@ -116,6 +116,9 @@ public class FlooringController {
                 service.updateOrder(editedOrder, orderDate);
                 view.displayEditOrderSuccessBanner();
             }
+        } else {
+            view.displayNoOrderFoundBanner(orderDate,orderNumber);
+            view.printMenuAndGetSelection();
         }
     }
 

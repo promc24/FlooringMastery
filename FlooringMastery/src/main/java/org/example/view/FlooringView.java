@@ -3,6 +3,8 @@ package org.example.view;
 import org.example.dao.FlooringDao;
 import org.example.dao.FlooringDaoImpl;
 import org.example.model.Order;
+import org.example.service.FlooringDataValidationException;
+import org.example.service.FlooringServiceLayerImpl;
 
 import javax.swing.*;
 import java.math.BigDecimal;
@@ -43,9 +45,10 @@ public class FlooringView {
     }
 
     //gets new order info from user
-    public Order getNewOrderInfo() {
+    public Order getNewOrderInfo() throws FlooringDataValidationException {
 
-        FlooringDaoImpl flooringDao = new FlooringDaoImpl();
+        FlooringDao flooringDao = new FlooringDaoImpl();
+        FlooringServiceLayerImpl service = new FlooringServiceLayerImpl(flooringDao);
 
         //asks for dates and checks if it meets requirements and formats them into to the wanted order
         LocalDate orderDate;
@@ -83,7 +86,7 @@ public class FlooringView {
         while (true){
             try{
                 state = capitalizeFirstLetter(io.readString("Enter state:"));
-                stateInfo = flooringDao.getStateInfo();
+                stateInfo = service.getStateInfo();
                 if (!state.isEmpty() && stateInfo.contains(state)){
                     stateInfo.clear();
                     break;
@@ -119,7 +122,7 @@ public class FlooringView {
         tempOrderInfoList.add(String.valueOf(area));
 
 
-        calculatedInfo = flooringDao.calculateOrderInfo(tempOrderInfoList);
+        calculatedInfo = service.calculateOrderInfo(tempOrderInfoList);
         BigDecimal taxRate = calculatedInfo.get(0);
         BigDecimal costPerSquareFoot = calculatedInfo.get(1);
         BigDecimal laborCostPerSquareFoot = calculatedInfo.get(2);
@@ -185,6 +188,11 @@ public class FlooringView {
     //displays list of orders depending on given order date
     public void displayOrderList(List<Order> orderList, LocalDate orderDate) {
 
+        //if list is empty return to main menu
+        if (orderList.isEmpty()) {
+            io.print("No orders found for " + orderDate + ".\n");
+            return;
+        }
         io.print("\n<<List of Orders for '" + orderDate.format(formatter) + "'>>\n");
         for (Order currentOrder : orderList) {
 
@@ -206,7 +214,12 @@ public class FlooringView {
 
     //displays order to be edited
     public Order displayOrderToEdit(Order ogOrder, LocalDate ogDate) {
+        if(ogOrder == null){
+            io.print("Order number not found for date " + ogDate);
+            return null;
+        }
         FlooringDaoImpl flooringDao = new FlooringDaoImpl();
+        FlooringServiceLayerImpl service = new FlooringServiceLayerImpl(flooringDao);
         //asks for the other order info
         String ogCustomerName = ogOrder.getCustomerName();
         String ogState = ogOrder.getState();
@@ -220,7 +233,7 @@ public class FlooringView {
         while (true){
             try{
                 newState = capitalizeFirstLetter(io.readString("Enter state'" + ogState + "':"));
-                stateInfo = flooringDao.getStateInfo();
+                stateInfo = service.getStateInfo();
                 if (newState.isEmpty() || stateInfo.contains(newState)){
                     stateInfo.clear();
                     break;
@@ -277,7 +290,7 @@ public class FlooringView {
             tempOrderInfoList.add(newProductType);
             tempOrderInfoList.add(String.valueOf(newArea));
 
-            calculatedInfo = flooringDao.calculateOrderInfo(tempOrderInfoList);
+            calculatedInfo = service.calculateOrderInfo(tempOrderInfoList);
             BigDecimal taxRate = calculatedInfo.get(0);
             BigDecimal costPerSquareFoot = calculatedInfo.get(1);
             BigDecimal laborCostPerSquareFoot = calculatedInfo.get(2);
@@ -503,8 +516,11 @@ public class FlooringView {
         io.print("Unknown Command!");
     }
 
+    public void displayNoOrderFoundBanner(LocalDate orderDate, int orderNumber) {
+        io.print("No such order found for '" + orderDate + "' with order number " + orderNumber + ".\n");
+    }
+
     public void displayErrorMessage (String errorMessage){
-        io.print("<<Remove Order>>");
         io.print(errorMessage);
     }
 }

@@ -1,6 +1,7 @@
 package org.example.dao;
 
 import org.example.model.Order;
+import org.example.service.FlooringServiceLayerImpl;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,8 @@ class FlooringDaoImplTest {
                 writer.newLine();
                 writer.write("1,Mikasa Ackerman,Texas,6.25,Wood,100,5.15,4.75,515.00,475.00,61.88,1051.88");
                 writer.newLine();
+                writer.write("2,Levi Ackerman,Texas,6.25,Wood,100,5.15,4.75,515.00,475.00,61.88,1051.88");
+                writer.newLine();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -73,72 +76,51 @@ class FlooringDaoImplTest {
     @Test
     void testAddOrder() throws FlooringPersistenceException {
         LocalDate orderDate = LocalDate.of(2025, 5, 30);
-        Order order = new Order(2, "Armin Arlert", "Texas", new BigDecimal("4.45"),
+        Order order = new Order(3, "Armin Arlert", "Texas", new BigDecimal("4.45"),
                 "Wood", new BigDecimal("100"), new BigDecimal("5.15"), new BigDecimal("4.75"),
                 new BigDecimal("515.00"), new BigDecimal("475.00"), new BigDecimal("39.60"), new BigDecimal("1029.60"));
 
         dao.addOrder(orderDate, order);
         List<Order> retrievedOrders = dao.getAllOrders(orderDate);
-        assertEquals(2, retrievedOrders.size());
-        assertEquals(order.getOrderNumber(), retrievedOrders.get(1).getOrderNumber());
+        assertEquals(3, retrievedOrders.size());
+        assertEquals(order.getOrderNumber(), retrievedOrders.get(2).getOrderNumber());
     }
 
     //tests get order list
     @Test
-    void testGetAllOrders_NoOrders_ReturnsEmptyList() throws FlooringPersistenceException {
+    void testGetAllOrders() throws FlooringPersistenceException {
         LocalDate orderDate = LocalDate.of(2025, 5, 30);
         List<Order> orders = dao.getAllOrders(orderDate);
-        assertEquals(1, orders.size());
+        assertEquals(2, orders.size());
     }
     //test order update
     @Test
-    void testUpdateOrder_Success() throws FlooringPersistenceException {
+    void testUpdateOrder() throws FlooringPersistenceException {
         LocalDate orderDate = LocalDate.of(2025, 5, 30);
-        Order order = new Order(2, "Armin Arlert", "Texas", new BigDecimal("4.45"),
+        Order order = new Order(3, "Armin Arlert", "Texas", new BigDecimal("4.45"),
                 "Wood", new BigDecimal("100"), new BigDecimal("5.15"), new BigDecimal("4.75"),
                 new BigDecimal("515.00"), new BigDecimal("475.00"), new BigDecimal("39.60"), new BigDecimal("1029.60"));
 
         dao.addOrder(orderDate, order);
 
-        Order updatedOrder = new Order(2, "Eren Jaegar", "CA", new BigDecimal("7.50"),
+        Order updatedOrder = new Order(3, "Eren Jaegar", "CA", new BigDecimal("7.50"),
                 "Tile", new BigDecimal("150"), new BigDecimal("4.25"), new BigDecimal("3.75"),
                 new BigDecimal("637.5"), new BigDecimal("562.5"), new BigDecimal("90.00"), new BigDecimal("1290"));
 
         dao.updateOrder(updatedOrder, orderDate);
         List<Order> orders = dao.getAllOrders(orderDate);
 
-        assertEquals(2, orders.size());
-        assertEquals("Eren Jaegar", orders.get(1).getCustomerName());
+        assertEquals(3, orders.size());
+        assertEquals("Eren Jaegar", orders.get(2).getCustomerName());
     }
 
     //test removing order
     @Test
-    void testRemoveOrder_Success() throws FlooringPersistenceException {
+    void testRemoveOrder() throws FlooringPersistenceException {
         LocalDate orderDate = LocalDate.of(2025, 5, 30);
         dao.removeOrder(orderDate, 1);
         List<Order> orders = dao.getAllOrders(orderDate);
-        assertTrue(orders.isEmpty());
-    }
-
-    //tests order info calculations
-    @Test
-    void testCalculateOrderInfo() {
-        ArrayList<String> tempOrderInfoList = new ArrayList<>();
-        tempOrderInfoList.add("Texas"); // State
-        tempOrderInfoList.add("Wood"); // ProductType
-        tempOrderInfoList.add("100"); // Area
-
-        ArrayList<BigDecimal> results = dao.calculateOrderInfo(tempOrderInfoList);
-
-        assertFalse(results.isEmpty());
-        assertEquals(7, results.size());
-        assertEquals(new BigDecimal("4.45"), results.get(0)); //tax rate
-        assertEquals(new BigDecimal("5.15"), results.get(1)); //cost per square foot
-        assertEquals(new BigDecimal("4.75"), results.get(2)); //labor cost per square foot
-        assertEquals(new BigDecimal("515.00"), results.get(3)); //material cost
-        assertEquals(new BigDecimal("475.00"), results.get(4)); //labor cost
-        assertEquals(new BigDecimal("39.60"), results.get(5)); //tax
-        assertEquals(new BigDecimal("1029.60"), results.get(6)); //total
+        assertEquals(1, orders.size());
     }
 }
 

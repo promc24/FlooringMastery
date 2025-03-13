@@ -9,7 +9,6 @@ import java.util.List;
 public interface FlooringServiceLayer {
 
     void addOrder(LocalDate orderDate, Order order) throws
-            FlooringDuplicateIdException,
             FlooringDataValidationException,
             FlooringPersistenceException;
 
@@ -21,7 +20,7 @@ public interface FlooringServiceLayer {
 
     Order removeOrder(LocalDate orderDate, int orderNumber) throws FlooringPersistenceException;
 
-    List<Order> extractAllOrders() throws FlooringPersistenceException;
+    void extractAllOrders() throws FlooringPersistenceException;
 
 
 
