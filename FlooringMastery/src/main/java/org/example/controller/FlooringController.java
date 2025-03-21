@@ -54,7 +54,7 @@ public class FlooringController {
             exitMessage();
         } catch (FlooringPersistenceException e){
             view.displayErrorMessage(e.getMessage());
-        } catch (FlooringDuplicateIdException | FlooringDataValidationException e) {
+        } catch ( FlooringDataValidationException e) {
             throw new RuntimeException(e);
         }
 
@@ -66,7 +66,7 @@ public class FlooringController {
     }
 
     //create new order
-    private void createNewOrder() throws FlooringPersistenceException, FlooringDuplicateIdException, FlooringDataValidationException {
+    private void createNewOrder() throws FlooringPersistenceException, FlooringDataValidationException {
         view.displayCreateOrderBanner();
         Order newOrder  = view.getNewOrderInfo();
 

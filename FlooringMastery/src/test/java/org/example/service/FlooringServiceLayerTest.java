@@ -89,7 +89,7 @@ class FlooringServiceLayerTest {
 
     //tests add order
     @Test
-    void testAddOrder() throws FlooringPersistenceException, FlooringDuplicateIdException, FlooringDataValidationException {
+    void testAddOrder() throws FlooringPersistenceException, FlooringDataValidationException {
         setUp(true);
         LocalDate orderDate = LocalDate.of(2025, 5, 30);
         Order order = new Order(3, "Armin Arlert", "Texas", new BigDecimal("4.45"),
@@ -114,7 +114,7 @@ class FlooringServiceLayerTest {
     }
     //test order update
     @Test
-    void testUpdateOrder() throws FlooringPersistenceException, FlooringDuplicateIdException, FlooringDataValidationException {
+    void testUpdateOrder() throws FlooringPersistenceException, FlooringDataValidationException {
         setUp(true);
         LocalDate orderDate = LocalDate.of(2025, 5, 30);
         Order order = new Order(3, "Armin Arlert", "Texas", new BigDecimal("4.45"),
